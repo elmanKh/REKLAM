@@ -1,4 +1,4 @@
-// Backend API Ünvanı (Serverimiz static faylları təqdim etdiyi üçün nisbi ünvandan istifadə edirik)
+// Backend API Ünvanı
 const API_URL = '/api';
 
 // Qlobal dəyişənlər
@@ -19,13 +19,24 @@ async function loadData() {
   try {
     const res = await fetch(`${API_URL}/listings`);
     const data = await res.json();
-    if (data.success) {
+    
+    // Backend cavabının formatından asılı olmayaraq məlumatı təhlükəsiz oxuyuruq
+    if (Array.isArray(data)) {
+      listings = data;
+    } else if (data && data.listings) {
       listings = data.listings;
-      renderCards();
-      document.getElementById('trashCount').textContent = data.trashCount || 0;
+    } else {
+      listings = [];
+    }
+
+    renderCards();
+    
+    const trashCountEl = document.getElementById('trashCount');
+    if (trashCountEl) {
+      trashCountEl.textContent = data.trashCount || trashListings.length || 0;
     }
   } catch (error) {
-    console.error("Backend serverə bağlanmaq mümkün olmadı:", error);
+    console.error("Backend serverinə bağlanmaq mümkün olmadı:", error);
   }
 
   // İstifadəçi seansını yoxlamaq
@@ -40,24 +51,26 @@ async function loadData() {
 function renderCards() {
   const grid = document.getElementById('cardsGrid');
   const noResults = document.getElementById('noResults');
-  const searchInput = document.getElementById('searchInput').value.toLowerCase().trim();
+  const searchInputEl = document.getElementById('searchInput');
+  const searchInput = searchInputEl ? searchInputEl.value.toLowerCase().trim() : '';
 
+  if (!grid) return;
   grid.innerHTML = '';
 
   const filtered = listings.filter(item => {
     const matchesCategory = (currentCategory === 'all' || item.category === currentCategory);
-    const matchesSearch = item.title.toLowerCase().includes(searchInput) ||
-                          item.description.toLowerCase().includes(searchInput);
+    const matchesSearch = (item.title && item.title.toLowerCase().includes(searchInput)) ||
+                          (item.description && item.description.toLowerCase().includes(searchInput));
     return matchesCategory && matchesSearch;
   });
 
   updateCounters();
 
   if (filtered.length === 0) {
-    noResults.style.display = 'block';
+    if (noResults) noResults.style.display = 'block';
     return;
   } else {
-    noResults.style.display = 'none';
+    if (noResults) noResults.style.display = 'none';
   }
 
   filtered.forEach(item => {
@@ -66,7 +79,7 @@ function renderCards() {
     const badgeClass = isCar ? 'badge-car' : 'badge-animal';
     const imageClass = item.image === 'Quzu.png' ? 'card-img-landscape' : '';
 
-    // Nömrəni təmizləyirik: boşdursa və ya yoxdursa "994000000000" tətbiq edirik
+    // Nömrəni təmizləyirik
     const rawPhone = item.phone ? String(item.phone).replace(/[^0-9]/g, '') : '';
     const phone = rawPhone.length > 5 ? rawPhone : "994000000000";
 
@@ -94,19 +107,25 @@ function renderCards() {
 
 // Sayğaclar
 function updateCounters() {
-  document.getElementById('count-all').textContent = listings.length;
-  document.getElementById('count-car').textContent = listings.filter(i => i.category === 'car').length;
-  document.getElementById('count-animal').textContent = listings.filter(i => i.category === 'animal').length;
+  const countAll = document.getElementById('count-all');
+  const countCar = document.getElementById('count-car');
+  const countAnimal = document.getElementById('count-animal');
+
+  if (countAll) countAll.textContent = listings.length;
+  if (countCar) countCar.textContent = listings.filter(i => i.category === 'car').length;
+  if (countAnimal) countAnimal.textContent = listings.filter(i => i.category === 'animal').length;
 }
 
-// Elanı Zibil Qutusuna Atmaq (Backend DELETE Sorğusu)
+// Elanı Zibil Qutusuna Atmaq
 async function deleteListing(id) {
+  if (!confirm("Bu elanı zibil qutusuna atmaq istədiyinizdən əminsiniz?")) return;
+
   try {
     const res = await fetch(`${API_URL}/listings/${id}`, {
       method: 'DELETE'
     });
     const data = await res.json();
-    if (data.success) {
+    if (res.ok && (data.success || Array.isArray(data))) {
       alert("Elan Zibil Qutusuna atıldı!");
       await loadData();
     } else {
@@ -117,14 +136,14 @@ async function deleteListing(id) {
   }
 }
 
-// Zibil Qutusundakı Elanı Geri Bərpa Etmək (Backend RESTORE Sorğusu)
+// Zibil Qutusundakı Elanı Geri Bərpa Etmək
 async function restoreListing(id) {
   try {
     const res = await fetch(`${API_URL}/trash/restore/${id}`, {
       method: 'POST'
     });
     const data = await res.json();
-    if (data.success) {
+    if (res.ok && data.success) {
       alert("Elan uğurla bərpa olundu!");
       await loadData();
       await openTrashModal();
@@ -138,28 +157,32 @@ async function restoreListing(id) {
 
 // Zibil Qutusunu Serverdən Oxuyub Göstərmək
 async function openTrashModal() {
-  document.getElementById('trashModalOverlay').style.display = 'flex';
+  const overlay = document.getElementById('trashModalOverlay');
+  if (overlay) overlay.style.display = 'flex';
+
   const trashList = document.getElementById('trashList');
-  trashList.innerHTML = '<p style="text-align:center; padding:20px;">Yüklənir...</p>';
+  if (trashList) trashList.innerHTML = '<p style="text-align:center; padding:20px;">Yüklənir...</p>';
 
   try {
     const res = await fetch(`${API_URL}/trash`);
     const data = await res.json();
-    if (data.success) {
-      trashListings = data.trash;
-      renderTrashList();
-    }
+    trashListings = data.trash || (Array.isArray(data) ? data : []);
+    renderTrashList();
   } catch (error) {
-    trashList.innerHTML = '<p style="text-align:center; padding:20px; color:red;">Zibil qutusunu yükləmək mümkün olmadı.</p>';
+    if (trashList) {
+      trashList.innerHTML = '<p style="text-align:center; padding:20px; color:red;">Zibil qutusunu yükləmək mümkün olmadı.</p>';
+    }
   }
 }
 
 function closeTrashModal() {
-  document.getElementById('trashModalOverlay').style.display = 'none';
+  const overlay = document.getElementById('trashModalOverlay');
+  if (overlay) overlay.style.display = 'none';
 }
 
 function renderTrashList() {
   const trashList = document.getElementById('trashList');
+  if (!trashList) return;
   trashList.innerHTML = '';
 
   if (trashListings.length === 0) {
@@ -181,14 +204,16 @@ function renderTrashList() {
   });
 }
 
-// Yeni Elan Göndərmək (Backend POST + AI Moderasiya)
+// Yeni Elan Göndərmək
 async function handleFormSubmit(e) {
   e.preventDefault();
 
   const submitBtn = document.querySelector('#addForm .btn-submit');
-  const originalBtnText = submitBtn.textContent;
-  submitBtn.textContent = "🤖 AI Yoxlayır...";
-  submitBtn.disabled = true;
+  const originalBtnText = submitBtn ? submitBtn.textContent : '';
+  if (submitBtn) {
+    submitBtn.textContent = "🤖 AI Yoxlayır...";
+    submitBtn.disabled = true;
+  }
 
   const newListing = {
     title: document.getElementById('title').value,
@@ -208,7 +233,7 @@ async function handleFormSubmit(e) {
 
     const data = await res.json();
 
-    if (res.ok && data.success) {
+    if (res.ok && (data.success || data.id)) {
       alert("✅ Elan uğurla əlavə olundu!");
       closeModal();
       document.getElementById('addForm').reset();
@@ -219,19 +244,36 @@ async function handleFormSubmit(e) {
   } catch (error) {
     alert("Serverlə əlaqə xətası! Serverin işlədiyindən əmin olun.");
   } finally {
-    submitBtn.textContent = originalBtnText;
-    submitBtn.disabled = false;
+    if (submitBtn) {
+      submitBtn.textContent = originalBtnText;
+      submitBtn.disabled = false;
+    }
   }
 }
 
-// İlkin Baza Bərpası
-function resetInitialData() {
-  loadData();
+// İlkin Baza Bərpası (MongoDB-ni Sıfırlayıb Nümunə Elanları Yükləyir)
+async function resetInitialData() {
+  if (confirm("Bütün elanları silib ilkin bazanı bərpa etmək istədiyinizdən əminsiniz?")) {
+    try {
+      const res = await fetch(`${API_URL}/reset`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success || Array.isArray(data)) {
+        alert("✅ İlkin baza uğurla bərpa olundu!");
+        await loadData();
+      } else {
+        alert("Bərpa zamanı xəta baş verdi.");
+      }
+    } catch (err) {
+      alert("Serverlə əlaqə xətası!");
+    }
+  }
 }
 
 // Login & Qeydiyyat Mexanizmi
 function checkUserSession() {
   const userSection = document.getElementById('userSection');
+  if (!userSection) return;
+
   if (currentUser) {
     userSection.innerHTML = `
       <span class="user-badge">👤 ${currentUser.name}</span>
@@ -271,17 +313,32 @@ function toggleAuthMode() {
 }
 
 // Modalların İdarəsi
-function openAuthModal() { document.getElementById('authModalOverlay').style.display = 'flex'; }
-function closeAuthModal() { document.getElementById('authModalOverlay').style.display = 'none'; }
-function openModal() { document.getElementById('modalOverlay').style.display = 'flex'; }
-function closeModal() { document.getElementById('modalOverlay').style.display = 'none'; }
+function openAuthModal() { 
+  const el = document.getElementById('authModalOverlay');
+  if (el) el.style.display = 'flex'; 
+}
+function closeAuthModal() { 
+  const el = document.getElementById('authModalOverlay');
+  if (el) el.style.display = 'none'; 
+}
+function openModal() { 
+  const el = document.getElementById('modalOverlay');
+  if (el) el.style.display = 'flex'; 
+}
+function closeModal() { 
+  const el = document.getElementById('modalOverlay');
+  if (el) el.style.display = 'none'; 
+}
 
 function setCategory(category, btnElement) {
   currentCategory = category;
   document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-  btnElement.classList.add('active');
+  if (btnElement) btnElement.classList.add('active');
   renderCards();
 }
 
 function filterCards() { renderCards(); }
-function setQuickImage(val) { document.getElementById('image').value = val; }
+function setQuickImage(val) { 
+  const imgInput = document.getElementById('image');
+  if (imgInput) imgInput.value = val; 
+}
