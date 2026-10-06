@@ -1,3 +1,15 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const path = require('path');
+
+const app = express();
+
+// Middlewares
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
+
+// 1. SİZİN İLKİN MƏLUMATLARINIZ (defaultData)
 const defaultData = {
   listings: [
     {
@@ -57,3 +69,58 @@ const defaultData = {
   ],
   trash: []
 };
+
+// 2. MongoDB Bağlantı Linki
+const MONGO_URI = process.env.MONGODB_URI || 
+                  process.env.MONGO_URI || 
+                  "mongodb+srv://applen2009_db_user:7U44Qf5uIcdXUt7X@cluster0.13hcxnk.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+
+// 3. MongoDB Sxemi (Elan Modeli)
+const listingSchema = new mongoose.Schema({
+  id: Number,
+  title: String,
+  category: String,
+  price: String,
+  image: String,
+  phone: String,
+  description: String
+});
+
+const Listing = mongoose.model('Listing', listingSchema);
+
+// 4. MongoDB-yə Qoşulma və defaultData-nı İdxal Etmə
+mongoose.connect(MONGO_URI)
+  .then(async () => {
+    console.log('✅ MongoDB verilənlər bazasına uğurla qoşuldu!');
+    
+    // Əgər bazada heç bir elan yoxdursa, defaultData-nı bazaya yerləşdiririk
+    const count = await Listing.countDocuments();
+    if (count === 0) {
+      await Listing.insertMany(defaultData.listings);
+      console.log('📦 defaultData ilkin elanları MongoDB bazasına əlavə olundu!');
+    }
+  })
+  .catch(err => {
+    console.error('❌ MongoDB bağlantı xətası:', err.message);
+  });
+
+// 5. API Yolları
+app.get('/api/listings', async (req, res) => {
+  try {
+    const listings = await Listing.find();
+    res.json(listings.length > 0 ? listings : defaultData.listings);
+  } catch (error) {
+    res.json(defaultData.listings);
+  }
+});
+
+// Əsas Səhifə Testi
+app.get('/', (req, res) => {
+  res.send('REKLAM (Elan Məkanı) backend serveri uğurla işləyir! 🚀');
+});
+
+// 6. Serverin İşə Salınması (Render Tələblərinə Uyğun)
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server ${PORT} portunda dinlənilir...`);
+});
