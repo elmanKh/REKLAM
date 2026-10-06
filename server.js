@@ -7,9 +7,12 @@ const app = express();
 // Middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// HTML, CSS, JS və şəkilləri sayta yükləmək üçün statik qovluqlar
+app.use(express.static(__dirname));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 1. İlkin elan məlumatlarınız (defaultData)
+// 1. TƏMİZ İLKİN MƏLUMATLAR (Təmiz şəkil linkləri ilə)
 const defaultData = {
   listings: [
     {
@@ -70,10 +73,9 @@ const defaultData = {
   trash: []
 };
 
-// 2. MongoDB Bağlantı Linki (Yalnız Environment dəyişənindən oxunur)
+// 2. MongoDB Bağlantısı
 const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
 
-// 3. MongoDB Sxemi
 const listingSchema = new mongoose.Schema({
   id: Number,
   title: String,
@@ -86,10 +88,7 @@ const listingSchema = new mongoose.Schema({
 
 const Listing = mongoose.model('Listing', listingSchema);
 
-// 4. Verilənlər bazasına qoşulma
-if (!MONGO_URI) {
-  console.error('❌ XƏTA: Render Environment-də MONGODB_URI tapılmadı!');
-} else {
+if (MONGO_URI) {
   mongoose.connect(MONGO_URI)
     .then(async () => {
       console.log('✅ MongoDB verilənlər bazasına uğurla qoşuldu!');
@@ -99,12 +98,10 @@ if (!MONGO_URI) {
         console.log('📦 defaultData ilkin elanları MongoDB-yə yazıldı!');
       }
     })
-    .catch(err => {
-      console.error('❌ MongoDB bağlantı xətası:', err.message);
-    });
+    .catch(err => console.error('❌ MongoDB xətası:', err.message));
 }
 
-// 5. API və Əsas Səhifə Yolları
+// 3. API Yolu (Front-end üçün elanlar)
 app.get('/api/listings', async (req, res) => {
   try {
     const listings = await Listing.find();
@@ -114,11 +111,16 @@ app.get('/api/listings', async (req, res) => {
   }
 });
 
+// 4. Əsas Səhifə (Saytın özünü - index.html faylını açır)
 app.get('/', (req, res) => {
-  res.send('REKLAM (Elan Məkanı) backend serveri uğurla işləyir! 🚀');
+  res.sendFile(path.join(__dirname, 'index.html'), (err) => {
+    if (err) {
+      res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    }
+  });
 });
 
-// 6. Port Tənzimləməsi
+// 5. Port Tənzimləməsi
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server ${PORT} portunda işləyir...`);
