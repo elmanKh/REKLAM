@@ -1,127 +1,97 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const path = require('path');
+let currentListings = [];
+let currentCategory = 'all';
 
-const app = express();
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(__dirname));
-app.use(express.static(path.join(__dirname, 'public')));
-
-// İlkin elanlar
-const defaultListings = [
-  {
-    id: 1,
-    title: "[NÜMUNƏ] Simmental Cins İnək",
-    category: "animal",
-    price: "2,400 AZN",
-    image: "Inek.png",
-    phone: "994000000000",
-    description: "Günlük 22 litr süd verir. Sağlamdır, bütün peyvəndləri olunub."
-  },
-  {
-    id: 2,
-    title: "[NÜMUNƏ] Mercedes E260 (2012)",
-    category: "car",
-    price: "18,500 AZN",
-    image: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=500",
-    phone: "994000000000",
-    description: "İkinci əl, yaxşı vəziyyətdədir. Vuruğu yoxdur, mühərrik 2.2L dizel."
-  },
-  {
-    id: 3,
-    title: "[NÜMUNƏ] Hyundai Elantra (2015)",
-    category: "car",
-    price: "16,200 AZN",
-    image: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=500",
-    phone: "994000000000",
-    description: "Səliqəli sürülüb, yürüşü orijinaldır. Şəhər içi çox qənaətcildir."
-  },
-  {
-    id: 4,
-    title: "[NÜMUNƏ] Qoyun Sürüsü",
-    category: "animal",
-    price: "3,200 AZN",
-    image: "Quzu.png",
-    phone: "994000000000",
-    description: "Yaylaqda otlayan sağlam qoyun sürüsü."
-  },
-  {
-    id: 5,
-    title: "[NÜMUNƏ] Qaz",
-    category: "animal",
-    price: "Razılaşma yolu ilə",
-    image: "Qaz.png",
-    phone: "994000000000",
-    description: "Qaz elanı üçün şəkil nümunəsi."
-  },
-  {
-    id: 6,
-    title: "[NÜMUNƏ] Cins atlar",
-    category: "animal",
-    price: "1,200 AZN",
-    image: "At.png",
-    phone: "994000000000",
-    description: "Cins atlar, alqı-satqısı."
-  }
-];
-
-const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
-
-const listingSchema = new mongoose.Schema({
-  id: Number,
-  title: String,
-  category: String,
-  price: String,
-  image: String,
-  phone: String,
-  description: String
+document.addEventListener('DOMContentLoaded', () => {
+  fetchListings();
 });
 
-const Listing = mongoose.model('Listing', listingSchema);
-
-if (MONGO_URI) {
-  mongoose.connect(MONGO_URI)
-    .then(async () => {
-      console.log('✅ MongoDB-yə qoşuldu!');
-      const count = await Listing.countDocuments();
-      if (count === 0) {
-        await Listing.insertMany(defaultListings);
-        console.log('📦 İlkin elanlar MongoDB-yə yazıldı!');
-      }
-    })
-    .catch(err => console.error('❌ MongoDB xətası:', err.message));
+// Backend API-dən elanları çəkən funksiya
+async function fetchListings() {
+  try {
+    const res = await fetch('/api/listings');
+    const data = await res.json();
+    currentListings = data;
+    renderUI();
+  } catch (err) {
+    console.error('Elanlar yüklənmədi:', err);
+  }
 }
 
-// Bütün elanları gətirən API
-app.get('/api/listings', async (req, res) => {
-  try {
-    let listings = await Listing.find();
-    if (!listings || listings.length === 0) {
-      await Listing.insertMany(defaultListings);
-      listings = defaultListings;
+// Ekranda elanları və sayğacları göstərən funksiya
+function renderUI() {
+  updateCounts();
+  filterAndRenderListings();
+}
+
+function updateCounts() {
+  const total = currentListings.length;
+  const cars = currentListings.filter(item => item.category === 'car').length;
+  const animals = currentListings.filter(item => item.category === 'animal').length;
+
+  const btnAll = document.querySelector('[onclick*="all"], .btn-all-count');
+  const btnCar = document.querySelector('[onclick*="car"], .btn-car-count');
+  const btnAnimal = document.querySelector('[onclick*="animal"], .btn-animal-count');
+
+  // Sayğac mətnlərini yeniləyirik
+  if (document.getElementById('count-all')) document.getElementById('count-all').innerText = `(${total})`;
+  if (document.getElementById('count-car')) document.getElementById('count-car').innerText = `(${cars})`;
+  if (document.getElementById('count-animal')) document.getElementById('count-animal').innerText = `(${animals})`;
+}
+
+function filterCategory(cat) {
+  currentCategory = cat;
+  filterAndRenderListings();
+}
+
+function filterAndRenderListings() {
+  const container = document.getElementById('listings-container') || document.querySelector('.listings-grid') || document.getElementById('listings');
+  if (!container) return;
+
+  const searchInput = document.getElementById('search-input') || document.querySelector('input[type="text"]');
+  const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+  let filtered = currentListings;
+
+  if (currentCategory !== 'all') {
+    filtered = filtered.filter(item => item.category === currentCategory);
+  }
+
+  if (query) {
+    filtered = filtered.filter(item => 
+      item.title.toLowerCase().includes(query) || 
+      item.description.toLowerCase().includes(query)
+    );
+  }
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="text-align:center; padding: 40px; width: 100%;">🔍 Qeyd etdiyiniz sorğuya uyğun elan tapılmadı.</div>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(item => `
+    <div class="card" style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin: 10px; background: #fff;">
+      <img src="${item.image}" alt="${item.title}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 6px;" onerror="this.src='https://via.placeholder.com/300x200?text=Şəkil+Yoxdur'">
+      <h3 style="margin: 10px 0 5px 0;">${item.title}</h3>
+      <p style="color: #27ae60; font-weight: bold; font-size: 18px;">${item.price}</p>
+      <p style="color: #666; font-size: 14px;">${item.description}</p>
+      <p style="font-size: 13px; color: #888;">📞 ${item.phone}</p>
+    </div>
+  `).join('');
+}
+
+// "İlkin Bazanı Bərpa Et" Düyməsi Funksiyası
+async function resetDatabase() {
+  if (confirm("İlkin nümunə elanları bazaya bərpa etmək istəyirsiniz?")) {
+    try {
+      const res = await fetch('/api/reset', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        currentListings = data.listings;
+        renderUI();
+        alert("İlkin baza uğurla bərpa olundu!");
+      }
+    } catch (err) {
+      alert("Bərpa zamanı xəta baş verdi.");
     }
-    res.json(listings);
-  } catch (error) {
-    res.json(defaultListings);
   }
-});
-
-// Bazanı Bərpa Etmə API-si
-app.post('/api/reset', async (req, res) => {
-  try {
-    await Listing.deleteMany({});
-    await Listing.insertMany(defaultListings);
-    res.json({ success: true, listings: defaultListings });
-  } catch (error) {
-    res.status(500).json({ success: false });
-  }
-});
-
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server ${PORT} portunda işləyir...`));
+}
