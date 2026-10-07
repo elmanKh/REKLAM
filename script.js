@@ -11,13 +11,12 @@ document.addEventListener('DOMContentLoaded', () => {
   checkUserSession();
 });
 
-// Verilənləri Hər İki Formatda Təhlükəsiz Yükləmə Funksiyası
+// Elanları Vahid Formatda Yükləmə
 async function loadData() {
   try {
     const res = await fetch(`${API_URL}/listings`);
     const data = await res.json();
     
-    // Həm Massiv, həm də Obyekt formatını dəstəkləyir
     if (Array.isArray(data)) {
       listings = data;
     } else if (data && data.listings) {
@@ -33,14 +32,24 @@ async function loadData() {
       trashCountEl.textContent = (data && data.trashCount !== undefined) ? data.trashCount : 0;
     }
   } catch (error) {
-    console.error("Backend serverinə bağlanmaq mümkün olmadı:", error);
+    console.error("Serverlə əlaqə xətası:", error);
   }
+}
 
-  const savedUser = localStorage.getItem('elanMekani_user');
-  if (savedUser) {
-    currentUser = JSON.parse(savedUser);
-    checkUserSession();
+// QEYDİYYATSIZ İSTİFADƏÇİ BLOKLANMASI
+function openModal() {
+  if (!currentUser) {
+    alert("🔒 Elan yerləşdirmək üçün əvvəlcə daxil olun və ya qeydiyyatdan keçin!");
+    openAuthModal();
+    return;
   }
+  const el = document.getElementById('modalOverlay');
+  if (el) el.style.display = 'flex';
+}
+
+function closeModal() {
+  const el = document.getElementById('modalOverlay');
+  if (el) el.style.display = 'none';
 }
 
 function renderCards() {
@@ -72,7 +81,7 @@ function renderCards() {
     const isCar = item.category === 'car';
     const badgeText = isCar ? 'Maşın' : 'Mal-Qara';
     const badgeClass = isCar ? 'badge-car' : 'badge-animal';
-    const imageClass = item.image === 'Quzu.png' ? 'card-img-landscape' : '';
+    const imageClass = item.image === 'Quzu.png' || item.image === 'Ducks.png' ? 'card-img-landscape' : '';
 
     const rawPhone = item.phone ? String(item.phone).replace(/[^0-9]/g, '') : '';
     const phone = rawPhone.length > 5 ? rawPhone : "994000000000";
@@ -109,36 +118,178 @@ function updateCounters() {
   if (countAnimal) countAnimal.textContent = listings.filter(i => i.category === 'animal').length;
 }
 
+// Tokenlə Silmə
 async function deleteListing(id) {
+  if (!currentUser) {
+    alert("🔒 Elanı silmək üçün hesabınıza daxil olmalısınız!");
+    openAuthModal();
+    return;
+  }
+
   if (!confirm("Bu elanı zibil qutusuna atmaq istədiyinizdən əminsiniz?")) return;
 
+  const token = localStorage.getItem('elanMekani_token');
   try {
-    const res = await fetch(`${API_URL}/listings/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_URL}/listings/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
     const data = await res.json();
-    if (data.success || res.ok) {
+    if (data.success) {
       alert("Elan Zibil Qutusuna atıldı!");
       await loadData();
     } else {
-      alert("Xəta baş verdi.");
+      alert(data.message || "Xəta baş verdi.");
     }
   } catch (error) {
     alert("Serverlə əlaqə xətası!");
   }
 }
 
-async function restoreListing(id) {
+// Yeni Elan Əlavə Etmə
+async function handleFormSubmit(e) {
+  e.preventDefault();
+
+  const token = localStorage.getItem('elanMekani_token');
+  if (!token) {
+    alert("Zəhmət olmasa daxil olun!");
+    openAuthModal();
+    return;
+  }
+
+  const newListing = {
+    title: document.getElementById('title').value,
+    category: document.getElementById('category').value,
+    price: document.getElementById('price').value,
+    image: document.getElementById('image').value,
+    phone: document.getElementById('phone').value.replace(/[^0-9]/g, ''),
+    description: document.getElementById('description').value
+  };
+
   try {
-    const res = await fetch(`${API_URL}/trash/restore/${id}`, { method: 'POST' });
+    const res = await fetch(`${API_URL}/listings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(newListing)
+    });
+
     const data = await res.json();
-    if (data.success || res.ok) {
-      alert("Elan uğurla bərpa olundu!");
+
+    if (res.ok && data.success) {
+      alert("✅ Elan uğurla əlavə olundu!");
+      closeModal();
+      document.getElementById('addForm').reset();
       await loadData();
-      await openTrashModal();
     } else {
-      alert("Xəta baş verdi.");
+      alert(`🚫 ${data.message || "Elan əlavə olunmadı!"}`);
     }
   } catch (error) {
     alert("Serverlə əlaqə xətası!");
+  }
+}
+
+// JWT Seans Yoxlaması
+async function checkUserSession() {
+  const token = localStorage.getItem('elanMekani_token');
+  const userSection = document.getElementById('userSection');
+  if (!userSection) return;
+
+  if (token) {
+    try {
+      const res = await fetch(`${API_URL}/auth/me`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        currentUser = data.user;
+        userSection.innerHTML = `
+          <span class="user-badge" style="background:#27ae60; color:#fff; padding:6px 12px; border-radius:20px; margin-right:8px;">👤 ${currentUser.name}</span>
+          <button class="auth-btn" onclick="logoutUser()">Çıxış</button>
+        `;
+        return;
+      }
+    } catch (err) {
+      console.error("Seans doğrulama xətası:", err);
+    }
+  }
+
+  currentUser = null;
+  localStorage.removeItem('elanMekani_token');
+  userSection.innerHTML = `
+    <button class="auth-btn" onclick="openAuthModal()">🔑 Giriş / Qeydiyyat</button>
+  `;
+}
+
+// Həqiqi Login və Qeydiyyat
+async function handleAuthSubmit(e) {
+  e.preventDefault();
+
+  const email = document.getElementById('userEmail').value;
+  const password = document.getElementById('userPassword').value;
+  const name = isRegisterMode ? document.getElementById('userName').value : '';
+
+  const endpoint = isRegisterMode ? `${API_URL}/auth/register` : `${API_URL}/auth/login`;
+  const payload = isRegisterMode ? { name, email, password } : { email, password };
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      localStorage.setItem('elanMekani_token', data.token);
+      currentUser = data.user;
+      closeAuthModal();
+      checkUserSession();
+      alert(`✅ ${data.message}`);
+      document.getElementById('authForm').reset();
+    } else {
+      alert(`🚫 ${data.message || "Xəta baş verdi"}`);
+    }
+  } catch (error) {
+    alert("Serverlə əlaqə xətası!");
+  }
+}
+
+function logoutUser() {
+  currentUser = null;
+  localStorage.removeItem('elanMekani_token');
+  checkUserSession();
+  alert("Sistemdən çıxış edildi.");
+}
+
+function toggleAuthMode() {
+  isRegisterMode = !isRegisterMode;
+  document.getElementById('authTitle').textContent = isRegisterMode ? "📝 Qeydiyyat" : "🔑 Hesaba Giriş";
+  document.getElementById('nameGroup').style.display = isRegisterMode ? "block" : "none";
+  document.getElementById('authSubmitBtn').textContent = isRegisterMode ? "Qeydiyyatdan Keç" : "Daxil Ol";
+  document.getElementById('toggleAuthBtn').textContent = isRegisterMode ? "Daxil Ol" : "Qeydiyyatdan keç";
+}
+
+function openAuthModal() { const el = document.getElementById('authModalOverlay'); if (el) el.style.display = 'flex'; }
+function closeAuthModal() { const el = document.getElementById('authModalOverlay'); if (el) el.style.display = 'none'; }
+
+async function resetInitialData() {
+  if (confirm("Bütün elanları silib ilkin bazanı bərpa etmək istədiyinizdən əminsiniz?")) {
+    try {
+      const res = await fetch(`${API_URL}/reset`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success || res.ok) {
+        alert("✅ İlkin baza uğurla bərpa olundu!");
+        await loadData();
+      } else {
+        alert("Bərpa zamanı xəta baş verdi.");
+      }
+    } catch (err) {
+      alert("Serverlə əlaqə xətası!");
+    }
   }
 }
 
@@ -188,103 +339,25 @@ function renderTrashList() {
   });
 }
 
-async function handleFormSubmit(e) {
-  e.preventDefault();
-
-  const newListing = {
-    title: document.getElementById('title').value,
-    category: document.getElementById('category').value,
-    price: document.getElementById('price').value,
-    image: document.getElementById('image').value,
-    phone: document.getElementById('phone').value.replace(/[^0-9]/g, ''),
-    description: document.getElementById('description').value
-  };
-
+async function restoreListing(id) {
+  const token = localStorage.getItem('elanMekani_token');
   try {
-    const res = await fetch(`${API_URL}/listings`, {
+    const res = await fetch(`${API_URL}/trash/restore/${id}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newListing)
+      headers: { 'Authorization': `Bearer ${token}` }
     });
-
     const data = await res.json();
-
-    if (res.ok && data.success) {
-      alert("✅ Elan uğurla əlavə olundu!");
-      closeModal();
-      document.getElementById('addForm').reset();
+    if (data.success || res.ok) {
+      alert("Elan uğurla bərpa olundu!");
       await loadData();
+      await openTrashModal();
     } else {
-      alert("🚫 Elan əlavə olunmadı!");
+      alert("Xəta baş verdi.");
     }
   } catch (error) {
     alert("Serverlə əlaqə xətası!");
   }
 }
-
-async function resetInitialData() {
-  if (confirm("Bütün elanları silib ilkin bazanı bərpa etmək istədiyinizdən əminsiniz?")) {
-    try {
-      const res = await fetch(`${API_URL}/reset`, { method: 'POST' });
-      const data = await res.json();
-      if (data.success || res.ok) {
-        alert("✅ İlkin baza uğurla bərpa olundu!");
-        await loadData();
-      } else {
-        alert("Bərpa zamanı xəta baş verdi.");
-      }
-    } catch (err) {
-      alert("Serverlə əlaqə xətası!");
-    }
-  }
-}
-
-function checkUserSession() {
-  const userSection = document.getElementById('userSection');
-  if (!userSection) return;
-
-  if (currentUser) {
-    userSection.innerHTML = `
-      <span class="user-badge">👤 ${currentUser.name}</span>
-      <button class="auth-btn" onclick="logoutUser()">Çıxış</button>
-    `;
-  } else {
-    userSection.innerHTML = `
-      <button class="auth-btn" onclick="openAuthModal()">🔑 Giriş / Qeydiyyat</button>
-    `;
-  }
-}
-
-function handleAuthSubmit(e) {
-  e.preventDefault();
-  const email = document.getElementById('userEmail').value;
-  const name = isRegisterMode ? document.getElementById('userName').value : email.split('@')[0];
-
-  currentUser = { name: name, email: email };
-  localStorage.setItem('elanMekani_user', JSON.stringify(currentUser));
-  checkUserSession();
-  closeAuthModal();
-  alert(`Xoş gəldiniz, ${name}!`);
-}
-
-function logoutUser() {
-  currentUser = null;
-  localStorage.removeItem('elanMekani_user');
-  checkUserSession();
-}
-
-function toggleAuthMode() {
-  isRegisterMode = !isRegisterMode;
-  document.getElementById('authTitle').textContent = isRegisterMode ? "📝 Qeydiyyat" : "🔑 Hesaba Giriş";
-  document.getElementById('nameGroup').style.display = isRegisterMode ? "block" : "none";
-  document.getElementById('authSubmitBtn').textContent = isRegisterMode ? "Qeydiyyatdan Keç" : "Daxil Ol";
-  document.getElementById('toggleAuthBtn').textContent = isRegisterMode ? "Daxil Ol" : "Qeydiyyatdan keç";
-}
-
-function openAuthModal() { const el = document.getElementById('authModalOverlay'); if (el) el.style.display = 'flex'; }
-function closeAuthModal() { const el = document.getElementById('authModalOverlay'); if (el) el.style.display = 'none'; }
-function openModal() { const el = document.getElementById('modalOverlay'); if (el) el.style.display = 'flex'; }
-function closeModal() { const el = document.getElementById('modalOverlay'); if (el) el.style.display = 'none'; }
 
 function setCategory(category, btnElement) {
   currentCategory = category;
