@@ -207,7 +207,7 @@ app.post('/api/listings', authenticateToken, async (req, res) => {
   }
 });
 
-// SƏLAHİYYƏTLİ SİLMƏ (TƏHLÜKƏSİZ SƏRHƏD)
+// Zibil qutusuna atma (Soft Delete)
 app.delete('/api/listings/:id', authenticateToken, async (req, res) => {
   try {
     const listingId = Number(req.params.id);
@@ -217,20 +217,12 @@ app.delete('/api/listings/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: "Elan tapılmadı!" });
     }
 
-    // 1. Əgər elan sistem/nümunə elanıdırsa (userId yoxdursa) ➔ Silməyə icazə verilmir
     if (!listing.userId) {
-      return res.status(403).json({ 
-        success: false, 
-        message: "🚫 Nümunə/Sistem elanlarını silmək icazəniz yoxdur!" 
-      });
+      return res.status(403).json({ success: false, message: "🚫 Nümunə/Sistem elanlarını silmək icazəniz yoxdur!" });
     }
 
-    // 2. Əgər elan başqa istifadəçiyə aiddirsə ➔ Silməyə icazə verilmir
     if (listing.userId.toString() !== req.user.id) {
-      return res.status(403).json({ 
-        success: false, 
-        message: "🚫 Bu elan sizə aid deyil! Yalnız öz paylaşdığınız elanları silə bilərsiniz." 
-      });
+      return res.status(403).json({ success: false, message: "🚫 Bu elan sizə aid deyil! Yalnız öz paylaşdığınız elanları silə bilərsiniz." });
     }
 
     listing.isTrash = true;
@@ -261,6 +253,33 @@ app.post('/api/trash/restore/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// HƏMİŞƏLİK SİLMƏ (HARD DELETE)
+app.delete('/api/trash/:id', authenticateToken, async (req, res) => {
+  try {
+    const listingId = Number(req.params.id);
+    const listing = await Listing.findOne({ id: listingId });
+
+    if (!listing) {
+      return res.status(404).json({ success: false, message: "Elan tapılmadı!" });
+    }
+
+    if (!listing.userId) {
+      return res.status(403).json({ success: false, message: "🚫 Nümunə elanları həmişəlik silə bilməzsiniz!" });
+    }
+
+    if (listing.userId.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: "🚫 Bu elan sizə aid deyil!" });
+    }
+
+    await Listing.deleteOne({ id: listingId });
+
+    res.json({ success: true, message: "Elan bazadan həmişəlik silindi!" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// BAZANI SIFIRLAMA
 app.post('/api/reset', async (req, res) => {
   try {
     await Listing.deleteMany({});
