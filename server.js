@@ -26,8 +26,7 @@ app.use('/api/', limiter);
 app.use(express.static(__dirname));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 1. Mongoose Modelləri (Avatar və Owner ID əlavə olundu)
-
+// Mongoose Modelləri
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -49,7 +48,7 @@ const listingSchema = new mongoose.Schema({
   image: { type: String, default: "https://via.placeholder.com/500x300?text=Sekil+Yoxdur" },
   phone: { type: String, required: true },
   description: { type: String, required: true },
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Elanın sahibi
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   isTrash: { type: Boolean, default: false }
 }, { timestamps: true });
 
@@ -97,7 +96,7 @@ if (MONGO_URI) {
     .catch(err => console.error('❌ MongoDB xətası:', err.message));
 }
 
-// Qeydiyyat (Avatar Seçimi ilə)
+// Auth API-ləri
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, password, avatar } = req.body;
@@ -112,7 +111,6 @@ app.post('/api/auth/register', async (req, res) => {
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-
     const userAvatar = avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name)}`;
 
     const newUser = new User({ 
@@ -137,7 +135,6 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// Giriş (Login)
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -170,6 +167,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
   }
 });
 
+// Listing API-ləri
 app.get('/api/listings', async (req, res) => {
   try {
     let listings = await Listing.find({ isTrash: false }).sort({ createdAt: -1 });
@@ -184,7 +182,6 @@ app.get('/api/listings', async (req, res) => {
   }
 });
 
-// Elan Yaratmaq (userId əlavə olunur)
 app.post('/api/listings', authenticateToken, async (req, res) => {
   try {
     const { title, category, price, image, phone, description } = req.body;
@@ -199,7 +196,7 @@ app.post('/api/listings', authenticateToken, async (req, res) => {
       image: image || "https://via.placeholder.com/500x300?text=Sekil+Yoxdur",
       phone,
       description,
-      userId: req.user.id, // SAHİBİ TƏYİN EDİLİR
+      userId: req.user.id,
       isTrash: false
     });
 
@@ -210,7 +207,7 @@ app.post('/api/listings', authenticateToken, async (req, res) => {
   }
 });
 
-// SƏLAHİYYƏT YOXLAMASI İLƏ ELAN SİLMƏ (DELETE)
+// SƏLAHİYYƏTLİ SİLMƏ (TƏHLÜKƏSİZ SƏRHƏD)
 app.delete('/api/listings/:id', authenticateToken, async (req, res) => {
   try {
     const listingId = Number(req.params.id);
@@ -220,8 +217,16 @@ app.delete('/api/listings/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: "Elan tapılmadı!" });
     }
 
-    // Əgər elanın sahibi varsa və silmək istəyən istifadəçi həmin şəxs deyilsə ➔ BLOKLA
-    if (listing.userId && listing.userId.toString() !== req.user.id) {
+    // 1. Əgər elan sistem/nümunə elanıdırsa (userId yoxdursa) ➔ Silməyə icazə verilmir
+    if (!listing.userId) {
+      return res.status(403).json({ 
+        success: false, 
+        message: "🚫 Nümunə/Sistem elanlarını silmək icazəniz yoxdur!" 
+      });
+    }
+
+    // 2. Əgər elan başqa istifadəçiyə aiddirsə ➔ Silməyə icazə verilmir
+    if (listing.userId.toString() !== req.user.id) {
       return res.status(403).json({ 
         success: false, 
         message: "🚫 Bu elan sizə aid deyil! Yalnız öz paylaşdığınız elanları silə bilərsiniz." 
