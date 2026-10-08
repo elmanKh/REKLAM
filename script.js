@@ -84,11 +84,17 @@ function renderCards() {
     const rawPhone = item.phone ? String(item.phone).replace(/[^0-9]/g, '') : '';
     const phone = rawPhone.length > 5 ? rawPhone : "994000000000";
 
+    // Yalnız elanın sahibi olan istifadəçiyə silmə düyməsini göstəririk
+    const isOwner = currentUser && item.userId && (item.userId === currentUser.id || item.userId === currentUser._id);
+    const deleteBtnHTML = isOwner 
+      ? `<button class="delete-btn" onclick="deleteListing(${item.id})" title="Zibil qutusuna at">🗑️</button>` 
+      : '';
+
     const cardHTML = `
       <div class="card">
         <div class="card-img-container">
           <img class="card-img ${imageClass}" src="${item.image}" alt="${item.title}" onerror="this.src='https://via.placeholder.com/500x300?text=Şəkil+Tapılmadı'">
-          <button class="delete-btn" onclick="deleteListing(${item.id})" title="Zibil qutusuna at">🗑️</button>
+          ${deleteBtnHTML}
         </div>
         <div class="card-body">
           <span class="badge ${badgeClass}">${badgeText}</span>
@@ -116,7 +122,6 @@ function updateCounters() {
   if (countAnimal) countAnimal.textContent = listings.filter(i => i.category === 'animal').length;
 }
 
-// SƏLAHİYYƏTLİ SİLMƏ
 async function deleteListing(id) {
   if (!currentUser) {
     alert("🔒 Elanı silmək üçün hesabınıza daxil olmalısınız!");
@@ -188,7 +193,6 @@ async function handleFormSubmit(e) {
   }
 }
 
-// AVATAR İLƏ İSTİFADƏÇİ SEANSI
 async function checkUserSession() {
   const token = localStorage.getItem('elanMekani_token');
   const userSection = document.getElementById('userSection');
