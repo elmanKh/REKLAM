@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
   checkUserSession();
 });
 
-// Elanları Vahid Formatda Yükləmə
 async function loadData() {
   try {
     const res = await fetch(`${API_URL}/listings`);
@@ -36,7 +35,6 @@ async function loadData() {
   }
 }
 
-// QEYDİYYATSIZ İSTİFADƏÇİ BLOKLANMASI
 function openModal() {
   if (!currentUser) {
     alert("🔒 Elan yerləşdirmək üçün əvvəlcə daxil olun və ya qeydiyyatdan keçin!");
@@ -118,7 +116,7 @@ function updateCounters() {
   if (countAnimal) countAnimal.textContent = listings.filter(i => i.category === 'animal').length;
 }
 
-// Tokenlə Silmə
+// SƏLAHİYYƏTLİ SİLMƏ
 async function deleteListing(id) {
   if (!currentUser) {
     alert("🔒 Elanı silmək üçün hesabınıza daxil olmalısınız!");
@@ -135,18 +133,17 @@ async function deleteListing(id) {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const data = await res.json();
-    if (data.success) {
-      alert("Elan Zibil Qutusuna atıldı!");
+    if (res.ok && data.success) {
+      alert("✅ Elan Zibil Qutusuna atıldı!");
       await loadData();
     } else {
-      alert(data.message || "Xəta baş verdi.");
+      alert(data.message || "🚫 Bu elanı silməyə icazəniz yoxdur!");
     }
   } catch (error) {
     alert("Serverlə əlaqə xətası!");
   }
 }
 
-// Yeni Elan Əlavə Etmə
 async function handleFormSubmit(e) {
   e.preventDefault();
 
@@ -191,7 +188,7 @@ async function handleFormSubmit(e) {
   }
 }
 
-// JWT Seans Yoxlaması
+// AVATAR İLƏ İSTİFADƏÇİ SEANSI
 async function checkUserSession() {
   const token = localStorage.getItem('elanMekani_token');
   const userSection = document.getElementById('userSection');
@@ -205,9 +202,13 @@ async function checkUserSession() {
       const data = await res.json();
       if (data.success) {
         currentUser = data.user;
+        const avatarUrl = currentUser.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(currentUser.name)}`;
         userSection.innerHTML = `
-          <span class="user-badge" style="background:#27ae60; color:#fff; padding:6px 12px; border-radius:20px; margin-right:8px;">👤 ${currentUser.name}</span>
-          <button class="auth-btn" onclick="logoutUser()">Çıxış</button>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <img src="${avatarUrl}" alt="Avatar" style="width: 36px; height: 36px; border-radius: 50%; background: #fff; border: 2px solid #27ae60;">
+            <span class="user-badge" style="background:#27ae60; color:#fff; padding:6px 12px; border-radius:20px;">${currentUser.name}</span>
+            <button class="auth-btn" onclick="logoutUser()">Çıxış</button>
+          </div>
         `;
         return;
       }
@@ -223,7 +224,6 @@ async function checkUserSession() {
   `;
 }
 
-// Həqiqi Login və Qeydiyyat
 async function handleAuthSubmit(e) {
   e.preventDefault();
 
