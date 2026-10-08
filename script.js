@@ -84,7 +84,6 @@ function renderCards() {
     const rawPhone = item.phone ? String(item.phone).replace(/[^0-9]/g, '') : '';
     const phone = rawPhone.length > 5 ? rawPhone : "994000000000";
 
-    // Yalnız elanın sahibi olan istifadəçiyə silmə düyməsini göstəririk
     const isOwner = currentUser && item.userId && (item.userId === currentUser.id || item.userId === currentUser._id);
     const deleteBtnHTML = isOwner 
       ? `<button class="delete-btn" onclick="deleteListing(${item.id})" title="Zibil qutusuna at">🗑️</button>` 
@@ -331,13 +330,16 @@ function renderTrashList() {
 
   trashListings.forEach(item => {
     trashList.innerHTML += `
-      <div class="trash-item">
-        <img src="${item.image}" onerror="this.src='https://via.placeholder.com/50'">
-        <div class="trash-info">
-          <h4>${item.title}</h4>
-          <p>${item.price}</p>
+      <div class="trash-item" style="display:flex; align-items:center; justify-content:space-between; padding:10px; border-bottom:1px solid #eee;">
+        <img src="${item.image}" onerror="this.src='https://via.placeholder.com/50'" style="width:50px; height:50px; object-fit:cover; border-radius:6px;">
+        <div class="trash-info" style="flex:1; margin-left:10px;">
+          <h4 style="margin:0;">${item.title}</h4>
+          <p style="margin:0; color:#27ae60; font-weight:bold;">${item.price}</p>
         </div>
-        <button class="restore-btn" onclick="restoreListing(${item.id})">↩️ Geri Bərpa Et</button>
+        <div style="display:flex; gap:6px;">
+          <button class="restore-btn" onclick="restoreListing(${item.id})">↩️ Geri Bərpa Et</button>
+          <button onclick="permanentlyDeleteListing(${item.id})" style="background:#e74c3c; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">❌ Həmişəlik Sil</button>
+        </div>
       </div>
     `;
   });
@@ -357,6 +359,28 @@ async function restoreListing(id) {
       await openTrashModal();
     } else {
       alert("Xəta baş verdi.");
+    }
+  } catch (error) {
+    alert("Serverlə əlaqə xətası!");
+  }
+}
+
+async function permanentlyDeleteListing(id) {
+  if (!confirm("Bu elanı bazadan HƏMİŞƏLİK silmək istədiyinizdən əminsiniz? Bu əməliyyatı geri qaytarmaq mümkün olmayacaq!")) return;
+
+  const token = localStorage.getItem('elanMekani_token');
+  try {
+    const res = await fetch(`${API_URL}/trash/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      alert("✅ Elan bazadan həmişəlik silindi!");
+      await loadData();
+      await openTrashModal();
+    } else {
+      alert(data.message || "Xəta baş verdi.");
     }
   } catch (error) {
     alert("Serverlə əlaqə xətası!");
