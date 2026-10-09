@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
   checkUserSession();
 });
 
-// XSS KİBER-TƏHLÜKƏSİZLİK SÜZGƏCİ (ZƏRƏRLİ KODLARI MƏTNƏ ÇEVİRİR)
 function escapeHTML(str) {
   if (!str) return '';
   return String(str)
@@ -87,15 +86,20 @@ function renderCards() {
   }
 
   filtered.forEach(item => {
-    const isCar = item.category === 'car';
-    const badgeText = isCar ? 'Maşın' : 'Mal-Qara';
-    const badgeClass = isCar ? 'badge-car' : 'badge-animal';
-    const imageClass = item.image === 'Quzu.png' || item.image === 'Ducks.png' ? 'card-img-landscape' : '';
+    let badgeText = 'Maşın';
+    let badgeClass = 'badge-car';
+
+    if (item.category === 'animal') {
+      badgeText = 'Mal-Qara';
+      badgeClass = 'badge-animal';
+    } else if (item.category === 'farm') {
+      badgeText = 'Kənd Təsərrüfatı';
+      badgeClass = 'badge-farm';
+    }
 
     const rawPhone = item.phone ? String(item.phone).replace(/[^0-9]/g, '') : '';
     const phone = rawPhone.length > 5 ? rawPhone : "994000000000";
 
-    // Təhlükəsizlik süzgəcindən keçirilmiş mətnlər
     const safeTitle = escapeHTML(item.title);
     const safeDesc = escapeHTML(item.description);
     const safePrice = escapeHTML(item.price);
@@ -108,7 +112,7 @@ function renderCards() {
     const cardHTML = `
       <div class="card">
         <div class="card-img-container">
-          <img class="card-img ${imageClass}" src="${item.image}" alt="${safeTitle}" onerror="this.src='https://via.placeholder.com/500x300?text=Şəkil+Tapılmadı'">
+          <img class="card-img" src="${item.image}" alt="${safeTitle}" onerror="this.src='https://via.placeholder.com/500x300?text=Şəkil+Tapılmadı'">
           ${deleteBtnHTML}
         </div>
         <div class="card-body">
@@ -131,13 +135,14 @@ function updateCounters() {
   const countAll = document.getElementById('count-all');
   const countCar = document.getElementById('count-car');
   const countAnimal = document.getElementById('count-animal');
+  const countFarm = document.getElementById('count-farm');
 
   if (countAll) countAll.textContent = listings.length;
   if (countCar) countCar.textContent = listings.filter(i => i.category === 'car').length;
   if (countAnimal) countAnimal.textContent = listings.filter(i => i.category === 'animal').length;
+  if (countFarm) countFarm.textContent = listings.filter(i => i.category === 'farm').length;
 }
 
-// FAYLDAN (KOMPÜTER/TELEFON) ŞƏKİL SEÇİLDİKDƏ BASE64 MƏTNƏ ÇEVİRMƏ
 function convertImageToBase64(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -266,7 +271,6 @@ async function checkUserSession() {
   `;
 }
 
-// ŞİFRƏNİ GÖSTƏR / GİZLƏT (GÖZ SİMBVOLU)
 function togglePasswordVisibility() {
   const passInput = document.getElementById('userPassword');
   const eyeBtn = document.getElementById('togglePasswordBtn');
