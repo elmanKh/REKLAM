@@ -3,165 +3,175 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ElanMəkanı - Avto və Mal-Qara Satış Portalı</title>
+  <title>ElanMəkanı - İkinci Əl Maşınlar və Mal-Qara Satış Portalı</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚗</text></svg>">
 </head>
 <body>
 
-  <!-- Yuxarı Başlıq və Naviqasiya -->
-  <header>
-    <div class="header-container">
+  <!-- HEADER / NƏVİQASİYA -->
+  <header class="header">
+    <div class="container header-content">
       <div class="logo">
-        <h1>🚗 🐄 ElanMəkanı</h1>
-        <p>İkinci əl maşınlar və mal-qara satış portalı</p>
+        <span class="logo-icon">🚗🐄</span>
+        <div>
+          <h1>ElanMəkanı</h1>
+          <p class="logo-sub">İkinci əl maşınlar və mal-qara satış portalı</p>
+        </div>
       </div>
 
       <div class="header-actions">
-        <!-- İstifadəçi Giriş Statusu -->
+        <button class="trash-btn" onclick="openTrashModal()" title="Zibil Qutusu">
+          🗑️ Zibil Qutusu (<span id="trashCount">0</span>)
+        </button>
+        <button class="reset-btn" onclick="resetInitialData()" title="İlkin Bazanı Bərpa Et">
+          🔄 İlkin Bazanı Bərpa Et
+        </button>
+        <button class="add-btn" onclick="openModal()">➕ Yeni Elan Ver</button>
         <div id="userSection">
           <button class="auth-btn" onclick="openAuthModal()">🔑 Giriş / Qeydiyyat</button>
         </div>
-
-        <button class="add-btn" onclick="openModal()">➕ Yeni Elan</button>
-        <button class="trash-view-btn" onclick="openTrashModal()" title="Silinən elanlara bax vər bərpa et">🗑️ Zibil Qutusu (<span id="trashCount">0</span>)</button>
-        <button class="reset-btn" onclick="resetInitialData()" title="Silinmiş bütün ilkin elanları bərpa et">🔄 İlkin Bazanı Bərpa Et</button>
       </div>
     </div>
   </header>
 
-  <main class="main-container">
-    
-    <!-- Axtarış və Filtr Zolağı -->
-    <div class="controls-section">
+  <!-- ƏSAS MƏZMUN -->
+  <main class="container main-content">
+
+    <!-- AXTARIŞ VƏ FİLTƏRLƏR -->
+    <section class="filter-section">
       <div class="search-box">
-        <input type="text" id="searchInput" placeholder="🔍 Marka, heyvan adı və ya şəhər axtar..." oninput="filterCards()">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Marka, heyvan adı və ya şəhər axtar..." oninput="filterCards()">
       </div>
-      
-      <div class="filter-buttons">
-        <button class="filter-btn active" data-category="all" onclick="setCategory('all', this)">
+
+      <div class="category-filters">
+        <button class="filter-btn active" onclick="setCategory('all', this)">
           Bütün Elanlar (<span id="count-all">0</span>)
         </button>
-        <button class="filter-btn" data-category="car" onclick="setCategory('car', this)">
+        <button class="filter-btn" onclick="setCategory('car', this)">
           🚗 İkinci Əl Maşınlar (<span id="count-car">0</span>)
         </button>
-        <button class="filter-btn" data-category="animal" onclick="setCategory('animal', this)">
+        <button class="filter-btn" onclick="setCategory('animal', this)">
           🐄 Mal-Qara & Heyvanlar (<span id="count-animal">0</span>)
         </button>
       </div>
-    </div>
+    </section>
 
-    <!-- Elan Kartlarının Düzüldüyü Tor (Grid) -->
-    <div class="cards-grid" id="cardsGrid">
-      <!-- Kartlar JavaScript ilə avtomatik buraya yüklənəcək -->
-    </div>
+    <!-- ELAN KARTLARI ŞƏBƏKƏSİ -->
+    <section id="cardsGrid" class="cards-grid">
+      <!-- Kartlar script.js vasitəsilə dinamik yüklənir -->
+    </section>
 
-    <!-- Axtarış Nəticəsi Tapılmadıqda Çıxan Mesaj -->
-    <div class="no-results" id="noResults" style="display: none;">
-      🔍 Qeyd etdiyiniz sorğuya uyğun elan tapılmadı.
+    <!-- NƏTİCƏ TAPILMADI XƏBƏRDARLIĞI -->
+    <div id="noResults" class="no-results" style="display: none;">
+      <p>⚠️ Axtarışınıza uyğun heç bir elan tapılmadı.</p>
     </div>
 
   </main>
 
-  <!-- 🔑 LOGIN / QEYDİYYAT MODALI -->
-  <div class="modal-overlay" id="authModalOverlay">
-    <div class="modal-card">
+  <!-- MODAL: YENİ ELAN ƏLAVƏ ET -->
+  <div id="modalOverlay" class="modal-overlay">
+    <div class="modal-box">
       <div class="modal-header">
-        <h2 id="authTitle">🔑 Hesaba Giriş</h2>
-        <span class="close-btn" onclick="closeAuthModal()">&times;</span>
+        <h2>📢 Yeni Elan Əlavə Et</h2>
+        <button class="close-btn" onclick="closeModal()">&times;</button>
       </div>
-      <form id="authForm" onsubmit="handleAuthSubmit(event)">
-        <div class="form-group" id="nameGroup" style="display: none;">
-          <label for="userName">Ad və Soyadınız:</label>
-          <input type="text" id="userName" placeholder="Məs: Fidan Hüseyinova">
-        </div>
-        <div class="form-group">
-          <label for="userEmail">E-poçt və ya Telefon:</label>
-          <input type="text" id="userEmail" placeholder="Məs: fidan@gmail.com" required>
-        </div>
-        <div class="form-group">
-          <label for="userPassword">Şifrə (Login):</label>
-          <input type="password" id="userPassword" placeholder="******" required>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn-cancel" onclick="toggleAuthMode()" id="toggleAuthBtn">Qeydiyyatdan keç</button>
-          <button type="submit" class="btn-submit" id="authSubmitBtn">Daxil Ol</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- 🗑️ ZİBİL QUTUSU (BƏRPA) MODALI -->
-  <div class="modal-overlay" id="trashModalOverlay">
-    <div class="modal-card modal-large">
-      <div class="modal-header">
-        <h2>🗑️ Silinmiş Elanlar (Zibil Qutusu)</h2>
-        <span class="close-btn" onclick="closeTrashModal()">&times;</span>
-      </div>
-      <div class="trash-list" id="trashList">
-        <!-- Silinmiş elanlar bərpa olunmaq üçün buraya düşəcək -->
-      </div>
-      <div class="modal-footer">
-        <button class="btn-cancel" onclick="closeTrashModal()">Bağla</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ➕ YENİ ELAN YARATMA MODALI -->
-  <div class="modal-overlay" id="modalOverlay">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h2>➕ Yeni Elan Yarat</h2>
-        <span class="close-btn" onclick="closeModal()">&times;</span>
-      </div>
-      
       <form id="addForm" onsubmit="handleFormSubmit(event)">
         <div class="form-group">
-          <label for="title">Elanın Başlığı:</label>
-          <input type="text" id="title" placeholder="Məs: Mercedes E260 və ya Simmental İnək" required>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="category">Kateqoriya:</label>
-            <select id="category" required>
-              <option value="car">🚗 İkinci Əl Maşın</option>
-              <option value="animal">🐄 Mal-Qara & Heyvandarlıq</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="price">Qiymət (AZN):</label>
-            <input type="text" id="price" placeholder="Məs: 2,400 AZN" required>
-          </div>
+          <label for="title">Elan Başlığı:</label>
+          <input type="text" id="title" placeholder="Məsələn: Mercedes E200 və ya Sağmal İnək" required>
         </div>
 
         <div class="form-group">
-          <label for="image">Şəkil Ünvanı (Link və ya Fayl adı):</label>
-          <input type="text" id="image" placeholder="Səhifədəki Inek.png və ya internet linki" required>
-          <div class="quick-img-btns">
-            <small>Sürətli seçimlər:</small>
-            <button type="button" class="chip-btn" onclick="setQuickImage('Inek.png')">📷 Papkadakı Inek.png</button>
-            <button type="button" class="chip-btn" onclick="setQuickImage('Quzu.png')">📷 Papkadakı Quzu.png</button>
-            <button type="button" class="chip-btn" onclick="setQuickImage('Qaz.png')">📷 Papkadakı Qaz.png</button>
-            <button type="button" class="chip-btn" onclick="setQuickImage('https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=500')">🚗 Maşın Şəkli</button>
-          </div>
+          <label for="category">Kateqoriya:</label>
+          <select id="category" required>
+            <option value="car">🚗 İkinci Əl Maşın</option>
+            <option value="animal">🐄 Mal-Qara / Heyvan</option>
+          </select>
         </div>
 
         <div class="form-group">
-          <label for="phone">WhatsApp Nömrəsi:</label>
-          <input type="text" id="phone" placeholder="Məs: 994501234567" required>
+          <label for="price">Qiymət (AZN):</label>
+          <input type="text" id="price" placeholder="Məsələn: 15,500 AZN" required>
+        </div>
+
+        <!-- YENİLƏNMİŞ ŞƏKİL YÜKLƏMƏ SAHƏSİ -->
+        <div class="form-group">
+          <label for="imageFileInput">Elan Şəkli:</label>
+          <input type="file" id="imageFileInput" accept="image/*" onchange="convertImageToBase64(event)" style="margin-bottom: 8px; width: 100%;">
+          <input type="text" id="image" placeholder="Şəkil URL-i və ya yuxarıdan fayl seçin">
+          <small style="color: #666; font-size: 12px; display: block; margin-top: 4px;">
+            📁 Kompüter və ya telefondan şəkil seçə, yaxud hazır şəkil keçidi daxil edə bilərsiniz.
+          </small>
+        </div>
+
+        <div class="form-group">
+          <label for="phone">WhatsApp Əlaqə Nömrəsi:</label>
+          <input type="text" id="phone" placeholder="994501234567" required>
         </div>
 
         <div class="form-group">
           <label for="description">Ətraflı Məlumat:</label>
-          <textarea id="description" rows="3" placeholder="Elan haqqında qısa məlumat yazın..." required></textarea>
+          <textarea id="description" rows="3" placeholder="Elan haqqında ətraflı yazın..." required></textarea>
         </div>
 
-        <div class="modal-footer">
-          <button type="button" class="btn-cancel" onclick="closeModal()">Ləğv et</button>
-          <button type="submit" class="btn-submit">Yadda Saxla və Paylaş</button>
+        <div class="modal-actions">
+          <button type="button" class="cancel-btn" onclick="closeModal()">Ləğv Et</button>
+          <button type="submit" class="submit-btn">Əlavə Et</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: HESABA GİRİŞ / QEYDİYYAT (GÖZ İŞARƏSİ İLƏ YENİLƏNİB) -->
+  <div id="authModalOverlay" class="modal-overlay">
+    <div class="modal-box auth-box">
+      <div class="modal-header">
+        <h2 id="authTitle">🔑 Hesaba Giriş</h2>
+        <button class="close-btn" onclick="closeAuthModal()">&times;</button>
+      </div>
+      <form id="authForm" onsubmit="handleAuthSubmit(event)">
+        <div class="form-group" id="nameGroup" style="display: none;">
+          <label for="userName">Adınız və Soyadınız:</label>
+          <input type="text" id="userName" placeholder="Məsələn: Fidan Hüseynova">
+        </div>
+
+        <div class="form-group">
+          <label for="userEmail">E-poçt Ünvanı:</label>
+          <input type="email" id="userEmail" placeholder="numune@mail.ru" required>
+        </div>
+
+        <!-- GÖZ İŞARƏLİ ŞİFRƏ XANASI -->
+        <div class="form-group" style="position: relative;">
+          <label for="userPassword">Şifrə:</label>
+          <div style="position: relative; display: flex; align-items: center;">
+            <input type="password" id="userPassword" placeholder="Şifrənizi daxil edin" required style="width: 100%; padding-right: 40px;">
+            <span id="togglePasswordBtn" onclick="togglePasswordVisibility()" style="position: absolute; right: 12px; cursor: pointer; font-size: 18px; user-select: none;" title="Şifrəni Göstər/Gizlət">👁️</span>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="cancel-btn" id="toggleAuthBtn" onclick="toggleAuthMode()">Qeydiyyatdan keç</button>
+          <button type="submit" class="submit-btn" id="authSubmitBtn">Daxil Ol</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ZİBİL QUTUSU -->
+  <div id="trashModalOverlay" class="modal-overlay">
+    <div class="modal-box trash-box">
+      <div class="modal-header">
+        <h2>🗑️ Silinmiş Elanlar (Zibil Qutusu)</h2>
+        <button class="close-btn" onclick="closeTrashModal()">&times;</button>
+      </div>
+      <div id="trashList" class="trash-list">
+        <!-- Zibil qutusundakı elanlar script.js vasitəsilə bura yığılır -->
+      </div>
+      <div class="modal-actions" style="margin-top: 15px;">
+        <button type="button" class="cancel-btn" onclick="closeTrashModal()">Bağla</button>
+      </div>
     </div>
   </div>
 
