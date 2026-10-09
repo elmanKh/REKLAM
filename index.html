@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ElanMəkanı - İkinci Əl Maşınlar və Mal-Qara Satış Portalı</title>
+  <title>ElanMəkanı - Maşın, Mal-Qara və Kənd Təsərrüfatı Portalı</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚗</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>">
 </head>
 <body>
 
@@ -13,10 +13,10 @@
   <header class="header">
     <div class="container header-content">
       <div class="logo">
-        <span class="logo-icon">🚗🐄</span>
+        <span class="logo-icon">🚗🐄🌾</span>
         <div>
           <h1>ElanMəkanı</h1>
-          <p class="logo-sub">İkinci əl maşınlar və mal-qara satış portalı</p>
+          <p class="logo-sub">İkinci əl maşınlar, mal-qara və kənd təsərrüfatı satış portalı</p>
         </div>
       </div>
 
@@ -38,11 +38,11 @@
   <!-- ƏSAS MƏZMUN -->
   <main class="container main-content">
 
-    <!-- AXTARIŞ VƏ FİLTƏRLƏR -->
+    <!-- AXTARIŞ VƏ KATEQORİYA FİLTƏRLƏRİ -->
     <section class="filter-section">
       <div class="search-box">
         <span class="search-icon">🔍</span>
-        <input type="text" id="searchInput" placeholder="Marka, heyvan adı və ya şəhər axtar..." oninput="filterCards()">
+        <input type="text" id="searchInput" placeholder="Marka, heyvan adı, kənd məhsulu və ya şəhər axtar..." oninput="filterCards()">
       </div>
 
       <div class="category-filters">
@@ -54,6 +54,9 @@
         </button>
         <button class="filter-btn" onclick="setCategory('animal', this)">
           🐄 Mal-Qara & Heyvanlar (<span id="count-animal">0</span>)
+        </button>
+        <button class="filter-btn" onclick="setCategory('farm', this)">
+          🌾 Kənd Təsərrüfatı Məhsulları (<span id="count-farm">0</span>)
         </button>
       </div>
     </section>
@@ -80,7 +83,7 @@
       <form id="addForm" onsubmit="handleFormSubmit(event)">
         <div class="form-group">
           <label for="title">Elan Başlığı:</label>
-          <input type="text" id="title" placeholder="Məsələn: Mercedes E200 və ya Sağmal İnək" required>
+          <input type="text" id="title" placeholder="Məsələn: Mercedes E200, İnək və ya Təbii Quba Alması" required>
         </div>
 
         <div class="form-group">
@@ -88,15 +91,15 @@
           <select id="category" required>
             <option value="car">🚗 İkinci Əl Maşın</option>
             <option value="animal">🐄 Mal-Qara / Heyvan</option>
+            <option value="farm">🌾 Kənd Təsərrüfatı Məhsulu</option>
           </select>
         </div>
 
         <div class="form-group">
           <label for="price">Qiymət (AZN):</label>
-          <input type="text" id="price" placeholder="Məsələn: 15,500 AZN" required>
+          <input type="text" id="price" placeholder="Məsələn: 15,500 AZN və ya 0.80 AZN/kg" required>
         </div>
 
-        <!-- YENİLƏNMİŞ ŞƏKİL YÜKLƏMƏ SAHƏSİ -->
         <div class="form-group">
           <label for="imageFileInput">Elan Şəkli:</label>
           <input type="file" id="imageFileInput" accept="image/*" onchange="convertImageToBase64(event)" style="margin-bottom: 8px; width: 100%;">
@@ -124,7 +127,7 @@
     </div>
   </div>
 
-  <!-- MODAL: HESABA GİRİŞ / QEYDİYYAT (GÖZ İŞARƏSİ İLƏ YENİLƏNİB) -->
+  <!-- MODAL: HESABA GİRİŞ / QEYDİYYAT -->
   <div id="authModalOverlay" class="modal-overlay">
     <div class="modal-box auth-box">
       <div class="modal-header">
@@ -142,7 +145,6 @@
           <input type="email" id="userEmail" placeholder="numune@mail.ru" required>
         </div>
 
-        <!-- GÖZ İŞARƏLİ ŞİFRƏ XANASI -->
         <div class="form-group" style="position: relative;">
           <label for="userPassword">Şifrə:</label>
           <div style="position: relative; display: flex; align-items: center;">
@@ -166,9 +168,7 @@
         <h2>🗑️ Silinmiş Elanlar (Zibil Qutusu)</h2>
         <button class="close-btn" onclick="closeTrashModal()">&times;</button>
       </div>
-      <div id="trashList" class="trash-list">
-        <!-- Zibil qutusundakı elanlar script.js vasitəsilə bura yığılır -->
-      </div>
+      <div id="trashList" class="trash-list"></div>
       <div class="modal-actions" style="margin-top: 15px;">
         <button type="button" class="cancel-btn" onclick="closeTrashModal()">Bağla</button>
       </div>
