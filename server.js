@@ -40,10 +40,11 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
+// KƏND TƏSƏRRÜFATI KATEQORİYASI ƏLAVƏ EDİLDİ
 const listingSchema = new mongoose.Schema({
   id: { type: Number, unique: true },
   title: { type: String, required: true, trim: true },
-  category: { type: String, required: true, enum: ['car', 'animal'] },
+  category: { type: String, required: true, enum: ['car', 'animal', 'farm'] },
   price: { type: String, required: true, trim: true },
   image: { type: String, default: "https://via.placeholder.com/500x300?text=Sekil+Yoxdur" },
   phone: { type: String, required: true },
@@ -79,7 +80,8 @@ const defaultListings = [
   { id: 4, title: "[NÜMUNƏ] Qoyun Sürüsü", category: "animal", price: "3,200 AZN", image: "Quzu.png", phone: "994000000000", description: "Yaylaqda otlayan sağlam qoyun sürüsü.", isTrash: false },
   { id: 5, title: "[NÜMUNƏ] Qaz", category: "animal", price: "Razılaşma yolu ilə", image: "Qaz.png", phone: "994000000000", description: "Qaz elanı üçün şəkil nümunəsi.", isTrash: false },
   { id: 6, title: "[NÜMUNƏ] Cins atlar", category: "animal", price: "1,200 AZN", image: "At.png", phone: "994000000000", description: "Cins atlar, alqı-satqısı.", isTrash: false },
-  { id: 7, title: "[NÜMUNƏ] Ördəklər", category: "animal", price: "Razılaşma yolu ilə", image: "Ducks.png", phone: "994000000000", description: "Təbii şəraitdə çay kənarında böyümüş ördəklər.", isTrash: false }
+  { id: 7, title: "[NÜMUNƏ] Ördəklər", category: "animal", price: "Razılaşma yolu ilə", image: "Ducks.png", phone: "994000000000", description: "Təbii şəraitdə çay kənarında böyümüş ördəklər.", isTrash: false },
+  { id: 8, title: "[NÜMUNƏ] Təbii Quba Alması (1 Tonn)", category: "farm", price: "0.80 AZN/kg", image: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=500", phone: "994000000000", description: "Təbii, dərmansız bağ alması.", isTrash: false }
 ];
 
 const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
