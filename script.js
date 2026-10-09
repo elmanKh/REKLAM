@@ -11,6 +11,17 @@ document.addEventListener('DOMContentLoaded', () => {
   checkUserSession();
 });
 
+// XSS KİBER-TƏHLÜKƏSİZLİK SÜZGƏCİ (ZƏRƏRLİ KODLARI MƏTNƏ ÇEVİRİR)
+function escapeHTML(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 async function loadData() {
   try {
     const res = await fetch(`${API_URL}/listings`);
@@ -84,6 +95,11 @@ function renderCards() {
     const rawPhone = item.phone ? String(item.phone).replace(/[^0-9]/g, '') : '';
     const phone = rawPhone.length > 5 ? rawPhone : "994000000000";
 
+    // Təhlükəsizlik süzgəcindən keçirilmiş mətnlər
+    const safeTitle = escapeHTML(item.title);
+    const safeDesc = escapeHTML(item.description);
+    const safePrice = escapeHTML(item.price);
+
     const isOwner = currentUser && item.userId && (item.userId === currentUser.id || item.userId === currentUser._id);
     const deleteBtnHTML = isOwner 
       ? `<button class="delete-btn" onclick="deleteListing(${item.id})" title="Zibil qutusuna at">🗑️</button>` 
@@ -92,14 +108,14 @@ function renderCards() {
     const cardHTML = `
       <div class="card">
         <div class="card-img-container">
-          <img class="card-img ${imageClass}" src="${item.image}" alt="${item.title}" onerror="this.src='https://via.placeholder.com/500x300?text=Şəkil+Tapılmadı'">
+          <img class="card-img ${imageClass}" src="${item.image}" alt="${safeTitle}" onerror="this.src='https://via.placeholder.com/500x300?text=Şəkil+Tapılmadı'">
           ${deleteBtnHTML}
         </div>
         <div class="card-body">
           <span class="badge ${badgeClass}">${badgeText}</span>
-          <h3 class="card-title">${item.title}</h3>
-          <div class="card-price">${item.price}</div>
-          <p class="card-desc">${item.description}</p>
+          <h3 class="card-title">${safeTitle}</h3>
+          <div class="card-price">${safePrice}</div>
+          <p class="card-desc">${safeDesc}</p>
           <a href="https://wa.me/${phone}?text=Salam,%20${encodeURIComponent(item.title)}%20elani%20ile%20bagli%20yaziram" target="_blank" class="chat-btn">
             💬 Əlaqə Çatı (WhatsApp)
           </a>
@@ -119,6 +135,27 @@ function updateCounters() {
   if (countAll) countAll.textContent = listings.length;
   if (countCar) countCar.textContent = listings.filter(i => i.category === 'car').length;
   if (countAnimal) countAnimal.textContent = listings.filter(i => i.category === 'animal').length;
+}
+
+// FAYLDAN (KOMPÜTER/TELEFON) ŞƏKİL SEÇİLDİKDƏ BASE64 MƏTNƏ ÇEVİRMƏ
+function convertImageToBase64(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  if (file.size > 3 * 1024 * 1024) {
+    alert("⚠️ Şəkil həcmi çox böyükdür! Lütfən 3 MB-dan kiçik şəkil seçin.");
+    event.target.value = "";
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const imgInput = document.getElementById('image');
+    if (imgInput) {
+      imgInput.value = e.target.result;
+    }
+  };
+  reader.readAsDataURL(file);
 }
 
 async function deleteListing(id) {
@@ -183,6 +220,8 @@ async function handleFormSubmit(e) {
       alert("✅ Elan uğurla əlavə olundu!");
       closeModal();
       document.getElementById('addForm').reset();
+      const fileInput = document.getElementById('imageFileInput');
+      if (fileInput) fileInput.value = "";
       await loadData();
     } else {
       alert(`🚫 ${data.message || "Elan əlavə olunmadı!"}`);
@@ -209,7 +248,7 @@ async function checkUserSession() {
         userSection.innerHTML = `
           <div style="display: flex; align-items: center; gap: 8px;">
             <img src="${avatarUrl}" alt="Avatar" style="width: 36px; height: 36px; border-radius: 50%; background: #fff; border: 2px solid #27ae60;">
-            <span class="user-badge" style="background:#27ae60; color:#fff; padding:6px 12px; border-radius:20px;">${currentUser.name}</span>
+            <span class="user-badge" style="background:#27ae60; color:#fff; padding:6px 12px; border-radius:20px; font-weight: bold;">${escapeHTML(currentUser.name)}</span>
             <button class="auth-btn" onclick="logoutUser()">Çıxış</button>
           </div>
         `;
@@ -225,6 +264,22 @@ async function checkUserSession() {
   userSection.innerHTML = `
     <button class="auth-btn" onclick="openAuthModal()">🔑 Giriş / Qeydiyyat</button>
   `;
+}
+
+// ŞİFRƏNİ GÖSTƏR / GİZLƏT (GÖZ SİMBVOLU)
+function togglePasswordVisibility() {
+  const passInput = document.getElementById('userPassword');
+  const eyeBtn = document.getElementById('togglePasswordBtn');
+
+  if (!passInput || !eyeBtn) return;
+
+  if (passInput.type === 'password') {
+    passInput.type = 'text';
+    eyeBtn.textContent = '🙈';
+  } else {
+    passInput.type = 'password';
+    eyeBtn.textContent = '👁️';
+  }
 }
 
 async function handleAuthSubmit(e) {
@@ -329,16 +384,19 @@ function renderTrashList() {
   }
 
   trashListings.forEach(item => {
+    const safeTitle = escapeHTML(item.title);
+    const safePrice = escapeHTML(item.price);
+
     trashList.innerHTML += `
       <div class="trash-item" style="display:flex; align-items:center; justify-content:space-between; padding:10px; border-bottom:1px solid #eee;">
         <img src="${item.image}" onerror="this.src='https://via.placeholder.com/50'" style="width:50px; height:50px; object-fit:cover; border-radius:6px;">
         <div class="trash-info" style="flex:1; margin-left:10px;">
-          <h4 style="margin:0;">${item.title}</h4>
-          <p style="margin:0; color:#27ae60; font-weight:bold;">${item.price}</p>
+          <h4 style="margin:0;">${safeTitle}</h4>
+          <p style="margin:0; color:#27ae60; font-weight:bold;">${safePrice}</p>
         </div>
         <div style="display:flex; gap:6px;">
           <button class="restore-btn" onclick="restoreListing(${item.id})">↩️ Geri Bərpa Et</button>
-          <button onclick="permanentlyDeleteListing(${item.id})" style="background:#e74c3c; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">❌ Həmişəlik Sil</button>
+          <button onclick="permanentlyDeleteListing(${item.id})" style="background:#e74c3c; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:bold;">❌ Həmişəlik Sil</button>
         </div>
       </div>
     `;
