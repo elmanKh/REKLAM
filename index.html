@@ -153,9 +153,52 @@
           </div>
         </div>
 
-        <div class="modal-actions">
+        <!-- ŞİFRƏNİ UNUTDUM KEÇİDİ -->
+        <div style="text-align: right; margin-top: 6px;">
+          <a href="#" onclick="openForgotPasswordModal()" style="color: #1b4985; text-decoration: none; font-size: 13px; font-weight: 600;">❓ Şifrəni Unutdum?</a>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 15px;">
           <button type="button" class="cancel-btn" id="toggleAuthBtn" onclick="toggleAuthMode()">Qeydiyyatdan keç</button>
           <button type="submit" class="submit-btn" id="authSubmitBtn">Daxil Ol</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ŞİFRƏNİ UNUTDUM BƏRPA PƏNCƏRƏSİ -->
+  <div id="forgotModalOverlay" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>🔑 Şifrə Bərpası</h2>
+        <button class="close-btn" onclick="closeForgotPasswordModal()">&times;</button>
+      </div>
+      
+      <!-- 1. ADDIM: E-POÇT GÖNDƏRMƏ -->
+      <form id="forgotForm" onsubmit="handleForgotPasswordSubmit(event)">
+        <div class="form-group">
+          <label for="forgotEmail">E-poçt Ünvanınız:</label>
+          <input type="email" id="forgotEmail" placeholder="numune@mail.ru" required>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="cancel-btn" onclick="closeForgotPasswordModal()">Ləğv Et</button>
+          <button type="submit" class="submit-btn">Kod Göndər</button>
+        </div>
+      </form>
+
+      <!-- 2. ADDIM: KOD VƏ YENİ ŞİFRƏ -->
+      <form id="resetForm" onsubmit="handleResetPasswordSubmit(event)" style="display: none;">
+        <div class="form-group">
+          <label for="resetCode">E-poçtunuza Gələn 6 Rəqəmli Kod:</label>
+          <input type="text" id="resetCode" placeholder="123456" required>
+        </div>
+        <div class="form-group">
+          <label for="newPassword">Yeni Şifrə:</label>
+          <input type="password" id="newPassword" placeholder="Yeni şifrənizi daxil edin" required>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="cancel-btn" onclick="closeForgotPasswordModal()">Ləğv Et</button>
+          <button type="submit" class="submit-btn">Şifrəni Yenilə</button>
         </div>
       </form>
     </div>
