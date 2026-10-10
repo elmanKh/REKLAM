@@ -7,6 +7,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer'); // E-poçt göndərişi üçün
 
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET || 'elan_mekani_secret_key_2026';
@@ -31,16 +32,14 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, required: true },
-  avatar: { 
-    type: String, 
-    default: "https://api.dicebear.com/7.x/bottts/svg?seed=Fidan" 
-  },
+  avatar: { type: String, default: "https://api.dicebear.com/7.x/bottts/svg?seed=Fidan" },
+  resetCode: { type: String, default: null },
+  resetCodeExpires: { type: Date, default: null },
   role: { type: String, enum: ['user', 'admin'], default: 'user' }
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
 
-// KƏND TƏSƏRRÜFATI KATEQORİYASI ƏLAVƏ EDİLDİ
 const listingSchema = new mongoose.Schema({
   id: { type: Number, unique: true },
   title: { type: String, required: true, trim: true },
@@ -72,6 +71,78 @@ const authenticateToken = (req, res, next) => {
     next();
   });
 };
+
+// NODEMAILER TRANSPOTER (MAIL.RU NÜMUNƏSİ ÜÇÜN)
+const transporter = nodemailer.createTransport({
+  host: 'smtp.mail.ru',
+  port: 465,
+  secure: true,
+  auth: {
+    user: process.env.MAIL_USER || 'elanmekani2026@mail.ru',
+    pass: process.env.MAIL_PASS || 'demo_app_password'
+  }
+});
+
+// 🔑 1. ŞİFRƏ BƏRPA KODU GÖNDƏRMƏ API-Sİ
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ success: false, message: "E-poçt ünvanını daxil edin!" });
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Bu e-poçt ünvanı ilə istifadəçi tapılmadı!" });
+    }
+
+    // 6 rəqəmli unikal kod yaradırıq
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    user.resetCode = code;
+    user.resetCodeExpires = Date.now() + 15 * 60 * 1000; // 15 dəqiqə etibarlıdır
+    await user.save();
+
+    // Məktub göndərişi (Demo rejimində kodu həm də cavabda qaytarırıq)
+    console.log(`🔑 ${user.email} üçün bərpa kodu: ${code}`);
+
+    res.json({
+      success: true,
+      message: `Bərpa kodu e-poçt ünvanınıza göndərildi! (Sınaq Kodu: ${code})`,
+      testCode: code
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 🔑 2. KODU YOXLAYIB YENİ ŞİFRƏNİ TƏYİN ETMƏ API-Sİ
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { email, code, newPassword } = req.body;
+    if (!email || !code || !newPassword) {
+      return res.status(400).json({ success: false, message: "Bütün xanaları doldurun!" });
+    }
+
+    const user = await User.findOne({ 
+      email: email.toLowerCase(),
+      resetCode: code,
+      resetCodeExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: "Bərpa kodu yanlışdır və ya vaxtı bitib!" });
+    }
+
+    // Yeni şifrəni həşləyirik
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    user.resetCode = null;
+    user.resetCodeExpires = null;
+    await user.save();
+
+    res.json({ success: true, message: "✅ Şifrəniz uğurla yeniləndi! Yeni şifrə ilə daxil ola bilərsiniz." });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 const defaultListings = [
   { id: 1, title: "[NÜMUNƏ] Simmental Cins İnək", category: "animal", price: "2,400 AZN", image: "Inek.png", phone: "994000000000", description: "Günlük 22 litr süd verir.", isTrash: false },
@@ -209,7 +280,6 @@ app.post('/api/listings', authenticateToken, async (req, res) => {
   }
 });
 
-// Zibil qutusuna atma (Soft Delete)
 app.delete('/api/listings/:id', authenticateToken, async (req, res) => {
   try {
     const listingId = Number(req.params.id);
@@ -255,7 +325,6 @@ app.post('/api/trash/restore/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// HƏMİŞƏLİK SİLMƏ (HARD DELETE)
 app.delete('/api/trash/:id', authenticateToken, async (req, res) => {
   try {
     const listingId = Number(req.params.id);
@@ -281,7 +350,6 @@ app.delete('/api/trash/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// BAZANI SIFIRLAMA
 app.post('/api/reset', async (req, res) => {
   try {
     await Listing.deleteMany({});
