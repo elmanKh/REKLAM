@@ -338,6 +338,70 @@ function toggleAuthMode() {
 function openAuthModal() { const el = document.getElementById('authModalOverlay'); if (el) el.style.display = 'flex'; }
 function closeAuthModal() { const el = document.getElementById('authModalOverlay'); if (el) el.style.display = 'none'; }
 
+// ŞİFRƏ BƏRPA FUNKSİYALARI
+function openForgotPasswordModal() {
+  closeAuthModal();
+  const el = document.getElementById('forgotModalOverlay');
+  if (el) el.style.display = 'flex';
+  document.getElementById('forgotForm').style.display = 'block';
+  document.getElementById('resetForm').style.display = 'none';
+}
+
+function closeForgotPasswordModal() {
+  const el = document.getElementById('forgotModalOverlay');
+  if (el) el.style.display = 'none';
+}
+
+async function handleForgotPasswordSubmit(e) {
+  e.preventDefault();
+  const email = document.getElementById('forgotEmail').value;
+
+  try {
+    const res = await fetch(`${API_URL}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      alert(`✅ ${data.message}`);
+      document.getElementById('forgotForm').style.display = 'none';
+      document.getElementById('resetForm').style.display = 'block';
+    } else {
+      alert(`🚫 ${data.message || "Xəta baş verdi"}`);
+    }
+  } catch (error) {
+    alert("Serverlə əlaqə xətası!");
+  }
+}
+
+async function handleResetPasswordSubmit(e) {
+  e.preventDefault();
+  const email = document.getElementById('forgotEmail').value;
+  const code = document.getElementById('resetCode').value;
+  const newPassword = document.getElementById('newPassword').value;
+
+  try {
+    const res = await fetch(`${API_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code, newPassword })
+    });
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      alert(data.message);
+      closeForgotPasswordModal();
+      openAuthModal();
+    } else {
+      alert(`🚫 ${data.message || "Xəta baş verdi"}`);
+    }
+  } catch (error) {
+    alert("Serverlə əlaqə xətası!");
+  }
+}
+
 async function resetInitialData() {
   if (confirm("Bütün elanları silib ilkin bazanı bərpa etmək istədiyinizdən əminsiniz?")) {
     try {
